@@ -1,45 +1,13 @@
-print x;  
-print x; 
-{
-    print x;
-    print x
-};
-{
-    print x;
-    print x;
-    {
-        print x;
-        print x;
-        {
-            print x;
-            print x
-        }
-    };
-    {
-        print x;
-        print x
+a = PI
+print a
+b = (a + 1) * 2
+if (b > 9) {
+    print b
+} else {
+    while (b < 10) {
+        b = b + 1
+        print 999
+        b
     }
-};
-while (x = 1) {
-    x = 1;
-    print x;
-    print x;
-    while (x = 1) {
-        print x;
-        while (x = 1) {
-
-        }
-    }
-};
-if (x = 1) {
-    while (x = 1) {
-        if (x = 1) {
-            x = 1;
-            print x
-        } else {
-            x = 1;
-            print x;
-            print x
-        }
-    }
+    PHI
 }

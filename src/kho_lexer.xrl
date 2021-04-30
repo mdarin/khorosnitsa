@@ -17,6 +17,7 @@ WHITESPACE = [\s\t\v]
 D = [0-9]
 SYMBOL = [a-zA-Z][a-zA-Z0-9]*
 %KEYWORD = (while|if|else|print)
+SEPARATOR = [\n;]
 
 Rules.
 
@@ -34,6 +35,13 @@ else :
 
 print :
     {token, {'PRINT', TokenLine, TokenChars}}.
+
+read :
+    {token, {'READ', TokenLine, TokenChars}}.
+
+func :
+    {token, {'FUNC', TokenLine, TokenChars}}.
+
 
 {SYMBOL} : 
     IsConst = 'Elixir.Khorosnitsa.Mem':is_constant(TokenChars),
@@ -58,7 +66,7 @@ print :
     {token, {'==',  TokenLine}}.
 
 [/][=] :
-    {token, {'==',  TokenLine}}.
+    {token, {'/=',  TokenLine}}.
 
 [<]	:
     {token, {'<',  TokenLine}}.
@@ -110,11 +118,15 @@ div :
 [;] :
     {token, {';',  TokenLine}}.
 
-[\r] :
+[\n]+ :
+    skip_token. % lf {end_token, {'$end', TokenLine}}.
+
+% {SEPARATOR}+ :
+%     {token, {'SEP',  TokenLine}}.
+
+[\r]+ :
     skip_token. % cr {end_token, {'$end', TokenLine}}.
 
-[\n] :
-    skip_token. % lf {end_token, {'$end', TokenLine}}.
 
 (\r\n)+ :
     skip_token.  % crlf {end_token, {'$end', TokenLine}}.

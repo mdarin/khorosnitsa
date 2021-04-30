@@ -1,0 +1,6 @@
+func function_name(arg1, arg2) retval {
+    retval = (arg1 + arg2) * 2
+    return retval
+}
+
+b = function_name(

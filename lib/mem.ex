@@ -1,6 +1,9 @@
 defmodule Khorosnitsa.Mem do
   @moduledoc """
   Documentation
+
+  :sys.statistics(pid("0.145.0"), true)
+  :sys.trace(pid("0.145.0"), true)
   """
   use GenServer
 
@@ -53,6 +56,7 @@ defmodule Khorosnitsa.Mem do
 
   def push(element) do
     GenServer.cast(:mem, {:push, element})
+    # GenServer.call(:mem, {:push, element})
   end
 
   def pop do
@@ -64,11 +68,32 @@ defmodule Khorosnitsa.Mem do
   end
 
   def unshift(element) do
-    GenServer.cast(:mem, {:unshift, element})
+    # GenServer.cast(:mem, {:unshift, element})
+    GenServer.call(:mem, {:unshift, element})
+  end
+
+  def store(position, element) do
+    GenServer.call(:mem, {:store, position, element})
   end
 
   def dump do
     GenServer.call(:mem, :dump)
+  end
+
+  def get_depth do
+    GenServer.call(:mem, :get_depth)
+  end
+
+  def roll_up(position) do
+    GenServer.cast(:mem, {:roll_up, position})
+  end
+
+  def nested do
+    GenServer.cast(:mem, :nested)
+  end
+
+  def embed_nested do
+    GenServer.cast(:mem, :embed_nested)
   end
 
   # Server callbacks
@@ -164,6 +189,32 @@ defmodule Khorosnitsa.Mem do
     {:reply, result, state}
   end
 
+  # def handle_call({:push, element}, _from, %{:stack => stack} = state) do
+  #   Logger.debug("push element into stack")
+  #   stack = [element | stack]
+  #   {:reply, length(stack), %{state | stack: stack }}
+  # end
+
+  def handle_call({:unshift, element}, _from, %{:stack => stack} = state) do
+    Logger.debug("unshift element into stack")
+    position = length(stack)
+    stack = List.insert_at(stack, position, element)
+    {:reply, position + 1, %{state | stack: stack}}
+  end
+
+  def handle_call({:store, position, element}, _from, %{:stack => stack} = state) do
+    Logger.debug("store element in stack on exact position")
+    {left, right} = Enum.split(stack, position)
+    stack = Enum.concat(left, [element | right])
+    {:reply, position + 1, %{state | stack: stack}}
+  end
+
+  def handle_call(:get_depth, _from, %{:stack => stack} = state) do
+    Logger.debug("get stack depth")
+    depth = length(stack)
+    {:reply, depth, %{state | stack: stack}}
+  end
+
   def handle_call(message, _from, state) do
     Logger.debug("Undefined CALL message #{inspect(message)}")
     {:noreply, state}
@@ -177,9 +228,30 @@ defmodule Khorosnitsa.Mem do
     {:noreply, %{state | stack: [element | stack]}}
   end
 
-  def handle_cast({:unshift, element}, %{:stack => stack} = state) do
-    Logger.debug("unshift element into stack")
-    stack = List.insert_at(stack, length(stack), element)
+  def handle_cast({:roll_up, position}, %{:stack => stack} = state) do
+    Logger.debug("roll up stack from end to #{inspect(position)}")
+    {prog, sub} = Enum.split(stack, position)
+    position = length(stack)
+    stack = List.insert_at(prog, position, sub)
+    {:noreply, %{state | stack: stack}}
+  end
+
+  # def handle_cast({:unshift, element}, %{:stack => stack} = state) do
+  #   Logger.debug("unshift element into stack")
+  #   stack = List.insert_at(stack, length(stack), element)
+  #   {:noreply, %{state | stack: stack}}
+  # end
+
+  def handle_cast(:nested, %{:stack => stack} = state) do
+    Logger.debug("nested stack")
+    stack = [stack]
+    {:noreply, %{state | stack: stack}}
+  end
+
+  def handle_cast(:embed_nested, %{:stack => stack} = state) do
+    Logger.debug("embed nested stack into main stack")
+    [head | tail] = stack
+    stack = List.insert_at(head, length(head), tail)
     {:noreply, %{state | stack: stack}}
   end
 
