@@ -38,6 +38,10 @@ func zero() {
 #fractal0()
 
 
+
+
+
+
 ###
 # Факторил на хвостовой рекурсии
 #
@@ -77,8 +81,8 @@ func factorial(n) {
   factorial_1(n, p)
 }
 
-factorial(7)
-factorial(8)
+#factorial(7)
+#factorial(8)
 
 
 
@@ -91,8 +95,8 @@ factorial(8)
 func stirl(n) {
     sqrt(2 * n * PI) * (n/E)^n * (1 + 1/(12*n))
 }
-stirl(7)
-stirl(8)
+#stirl(7)
+#stirl(8)
 
 
 
