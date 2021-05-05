@@ -136,7 +136,7 @@ defmodule Khorosnitsa do
     #   INSTRUCTIONS #{inspect([instruction | prog])}
     # """)
 
-    #IO.puts("#{inspect instruction}\t#{inspect ds} #{inspect scopes}")
+    # IO.puts("#{inspect instruction}\t#{inspect ds} #{inspect scopes}")
 
     case instruction do
       :halt ->
@@ -165,7 +165,7 @@ defmodule Khorosnitsa do
           {:loop, loop_code} ->
             # если это цикл, запустить код снова из теневого регистра
             nested_scope = %{}
-            exec(loop_code, ds, rs, shadow, [nested_scope | scopes], depth+1)
+            exec(loop_code, ds, rs, shadow, [nested_scope | scopes], depth + 1)
 
           _ ->
             # иначе это конец сегмента
@@ -174,7 +174,7 @@ defmodule Khorosnitsa do
         end
 
       :mov ->
-        # здесь тоже надо следить за областью видимости
+        # следить за областью видимости
         # если это нулевой уровень, то работать с памятью(регистрами)
         # если это локальня область, то сохранить на страницу области
         [variable, value | rest] = ds
@@ -183,18 +183,10 @@ defmodule Khorosnitsa do
         #     Mem.put(variable, value)
         #     exec(prog, rest, rs, shadow, scopes, depth)
         #   _ ->
+        scopes = update_scopes(scopes, variable, value)
+        exec(prog, rest, rs, shadow, scopes, depth)
 
-            #case lookup_scopes(scopes, variable)
-            # [scope | rest_scopes] = scopes
-            # scope = Map.put(scope, variable, value)
-            # scopes = [scope | rest_scopes]
-            # exec(prog, rest, rs, shadow, scopes, depth)
-        # end
-
-          scopes = update_scopes(scopes, variable, value)
-          exec(prog, rest, rs, shadow, scopes, depth)
       :var ->
-        # TODO
         # Переменные имеют области видимости
         # Области видимости имеют страничную организацию в виде стека
         # На вершине стека располагется страница с агрументами функции, если они есть
@@ -210,9 +202,10 @@ defmodule Khorosnitsa do
         #     value = Mem.get(variable)
         #     exec(prog, [value | rest], rs, shadow, scopes, depth)
         #   _ ->
-            value = lookup_scopes(scopes, variable)
-            exec(prog, [value | rest], rs, shadow, scopes, depth)
-          # end
+        value = lookup_scopes(scopes, variable)
+        exec(prog, [value | rest], rs, shadow, scopes, depth)
+
+      # end
 
       :const ->
         [constant | rest] = ds
@@ -297,15 +290,39 @@ defmodule Khorosnitsa do
         exec(prog, ds, rs, shadow, scopes, depth)
 
       :cond_expr ->
-        # я думаю что надо убрать маркер body и проверку кондиции делать под маркером cond_exrp, тут
-        # skip
-        #   exec(prog, ds, shadow)
-        # :body ->
-        # здесь проверяется условие цикла
-        # условие как результат вычисления выражения, расположена на вершине стека
+        # здесь проверяется условие цикла и условие ветвления
+        # условие как результат вычисления выражения, расположено на вершине стека(в регистре TOS)
+
+        # Для корректной работы требуется хранить и понимать теукщее состояние
+        # состояний может быть несколько
+        # - цикл
+        # - условие if
+        # - условие if-else
+
+        # [INFO]
+        # if-elif-else это по сути тотже if-else
+
+        # Цикл - это звено в цепочке команд содержащее в себе вложенную цепочку команд
+        # Признак цикла - наличие кода в теневом регистре, возмоно с меткой "loop"
+        # Вход в цикл - это метка "loop_while" или иная.
+        # При обнаружении этой метки код цикла помещается в теневой регистр и передаётся,
+        # как аргумент программы в экземпляр функции "exec(loopcode, ds, shadow=loopcode или {loop, loopcode})"
+        # Выходы
+        # 1й выход возможен при достижении конца сегмента кода цикла
+        # 2й выход возможен при не выполнении условия цикла, при этом часть сегмента кода цикла выполняется!
+        # При этом должно НЕКОСНИТЕЛЬНО выполнятся правило, один воход = один выход
+        # Требуется реализовать переход при не выполнении цикла в точку завершения сегмента("done")
+
+        # если это цикл - теневой регистр не пуст
+
+
+
+        # если это цикл
+
+        # если это ветвление
+
         case ds do
           [tos | rest_ds] ->
-
             case tos do
               true ->
                 # продолжить выполнение программы
@@ -435,12 +452,17 @@ defmodule Khorosnitsa do
         func_params = Mem.call_func(function)
         # вызов подпрограммы
         # IO.puts("'-> ENTER")
-        {args, ds2} = Enum.split(ds1,func_params.arity)
+        {args, ds2} = Enum.split(ds1, func_params.arity)
         # Несоответсвие параметров это фатальная ошибка
         true = length(args) == func_params.arity
+
         # соотнести артументы функции и их имена переменных,
         # а затем поместить это в область видимости
-        nested_scope = for {variable, value} <- Enum.zip(func_params.args, args), into: %{}, do: {variable, value}
+        nested_scope =
+          for {variable, value} <- Enum.zip(func_params.args, args),
+              into: %{},
+              do: {variable, value}
+
         # emtpy DS, shadow
         # в RS передаются значения аргументов
         # [i] To access atom keys, one may also use the map.key notation.
@@ -448,6 +470,7 @@ defmodule Khorosnitsa do
         # IO.puts("<-' RETURN")
         # по сути это возврат результата из подпрограммы, результат оказывается на вершине стека
         ds = Enum.concat(ds0, ds2)
+
         # возврат из подпрограммы в основной поток исполнения
         # empty RS
         exec(prog, ds, [], shadow, scopes0, depth)
@@ -466,16 +489,25 @@ defmodule Khorosnitsa do
   ## internals
   #
 
-  defp lookup_scopes(scopes, variable) do
+  def push_nested_scope(scopes) do
+    nested_scope = %{}
+    [nested_scope | scopes]
+  end
+
+  def pop_nested_scope([_nested_scope | rest_scopes] = _scopes) do
+    rest_scopes
+  end
+
+  def lookup_scopes(scopes, variable) do
     # просмотреть страницы пространств имён
     # value =
-      Enum.reduce_while(scopes, :undefined, fn
-        scope, acc ->
-          case Map.get(scope, variable) do
-            nil -> {:cont, acc}
-            value -> {:halt, value}
-          end
-      end)
+    Enum.reduce_while(scopes, :undefined, fn
+      scope, acc ->
+        case Map.get(scope, variable) do
+          nil -> {:cont, acc}
+          value -> {:halt, value}
+        end
+    end)
 
     # если на страцинах такой переменной не нашлось,
     # то попробовать поискать среди глобальных переменных
@@ -502,18 +534,20 @@ defmodule Khorosnitsa do
     # обновляется переменная в ближайшей к вершине области видимости
     # если такой переменной нет ни в одной области видимости, то она создаётся в текущей странице(на вершине)
 
-    {is_updated, pos, viewed_scopes} = r =
+    {is_updated, pos, viewed_scopes} =
+      r =
       Enum.reduce_while(scopes, {false, 0, []}, fn
         scope, {_is_updated, count, acc} ->
           case Map.get(scope, variable, :undefined) do
             :undefined ->
               # если переменной нет
-              {:cont, {false, count+1, [scope | acc]} }
+              {:cont, {false, count + 1, [scope | acc]}}
+
             _ ->
               # обновить значение переменной и остановиться
               # зафиксирвоать номер страницы и выставить флаг
               scope = Map.put(scope, variable, value)
-              {:halt, {true, count+1, [scope | acc]} }
+              {:halt, {true, count + 1, [scope | acc]}}
           end
       end)
 
@@ -523,6 +557,7 @@ defmodule Khorosnitsa do
         viewed_scopes = Enum.reverse(viewed_scopes)
         {_skip, tail} = Enum.split(scopes, pos)
         Enum.concat(viewed_scopes, tail)
+
       _ ->
         # если флаг сброшен, то поместить переменную в страницу на вершине
         [scope | rest_scopes] = scopes

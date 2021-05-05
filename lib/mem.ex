@@ -136,7 +136,8 @@ defmodule Khorosnitsa.Mem do
         # "log10" => Log10, # проверка аргумента
         # проверка аргумента
         'exp' => {:math, :exp},
-        'sqrt'  => {:math, :sqrt}, #  проверка аргумента
+        #  проверка аргумента
+        'sqrt' => {:math, :sqrt},
         # "int"   => integer,
         # erlang:abs(-3)
         'abs' => {:erlang, :abs},
@@ -287,6 +288,7 @@ defmodule Khorosnitsa.Mem do
     args = []
     arity = 0
     function = ""
+
     # состояние разбора либо декларация функции либо её тело
     state2 = :decl
 
@@ -311,7 +313,9 @@ defmodule Khorosnitsa.Mem do
       }"
     )
 
-    functions = Map.put(functions, function, %{args: args, arity: arity, code: Enum.reverse(code)})
+    functions =
+      Map.put(functions, function, %{args: args, arity: arity, code: Enum.reverse(code)})
+
     stack = head
     {:noreply, %{state | stack: stack, functions: functions}}
   end
