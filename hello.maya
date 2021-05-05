@@ -1,13 +1,37 @@
-a = PI
-print a
-b = (a + 1) * 2
-if (b > 9) {
-    print b
-} else {
-    while (b < 10) {
-        b = b + 1
-        print 999
-        b
+# comment
+a = 1
+# print a
+b = a / 2
+1
+if (b > 0.6) {
+    while (b < 2) {
+        3
+        b = b + a
+        print b
     }
-    PHI
+    2
+} else {
+    #
+    #
+    #
+    4
+    c = 0   #  
+    print c
+    while (c < 1) {
+        5
+        c = c + 1
+        if (1 == 1) {
+            6
+            if (2 == 2) {
+                7
+                if (3 == 3) {
+                    8
+                    if (4 == 4) {
+                        9
+                        print 4242
+                    }
+                }
+            }
+        }
+    }
 }

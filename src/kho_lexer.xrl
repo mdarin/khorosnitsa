@@ -15,14 +15,13 @@ Definitions.
 %R     = [a-z]
 WHITESPACE = [\s\t\v]
 D = [0-9]
-SYMBOL = [a-zA-Z][a-zA-Z0-9]*
-%KEYWORD = (while|if|else|print)
+SYMBOL = [a-zA-Z][a-zA-Z_0-9]*
 SEPARATOR = [\n;]
 
 Rules.
 
-%{R} : Single letter registers
-%   {token, {register, TokenLine, TokenChars}}. 
+
+% Keywords
 
 while :
     {token, {'WHILE', TokenLine, TokenChars}}.
@@ -42,25 +41,53 @@ read :
 func :
     {token, {'FUNC', TokenLine, TokenChars}}.
 
+return :
+    {token, {'RETURN', TokenLine, TokenChars}}.
 
-{SYMBOL} : 
-    IsConst = 'Elixir.Khorosnitsa.Mem':is_constant(TokenChars),
-    IsBuiltin = 'Elixir.Khorosnitsa.Mem':is_builtin(TokenChars),
+% Logical Operators
 
-    io:format("is const ~p~n", [IsConst]),
-    io:format("is builtin ~p~n", [IsBuiltin]),
+or :
+    {token, {'OR', TokenLine, TokenChars}}.
 
-    if 
-        % is constant?
-         IsConst== true -> 
-            {token, {const, TokenLine, TokenChars}};
-        % is built in func?
-         IsBuiltin== true -> 
-            {token, {builtin, TokenLine, TokenChars}};
-        % if neither constant and non built in function then variable
-        true -> 
-            {token, {variable, TokenLine, TokenChars}}
-    end.
+and :	
+    {token, {'AND', TokenLine, TokenChars}}.
+
+not	:
+    {token, {'NOT', TokenLine, TokenChars}}.
+
+xor :
+    {token, {'XOR', TokenLine, TokenChars}}.
+
+
+% Bitwise Operators
+	
+band :
+    {token, {'BAND', TokenLine, TokenChars}}.
+
+bor :
+    {token, {'BOR', TokenLine, TokenChars}}.
+
+bxor :
+    {token, {'BXOR', TokenLine, TokenChars}}.
+
+bnot :
+    {token, {'BNOT', TokenLine, TokenChars}}.
+
+% http://erlang.org/pipermail/erlang-questions/2003-June/009193.html
+% bsl - bit shift left
+% bsr - bit shift right
+bsl :
+    {token, {'BSL', TokenLine, TokenChars}}.
+
+bsr :
+    {token, {'BSR', TokenLine, TokenChars}}.
+
+% Line comments
+
+([#].+?) :
+    skip_token.
+
+% Relational Operators
 
 [=][=] :
     {token, {'==',  TokenLine}}.
@@ -76,26 +103,17 @@ func :
 
 [=][<] :
     {token, {'=<',  TokenLine}}.
+
 [>][=] :
     {token, {'>=',  TokenLine}}.
-
-\{ :
-    {token, {'{',  TokenLine}}.
-
-\} :
-    {token, {'}',  TokenLine}}.
 
 [=] : 
     {token, {'=',  TokenLine}}.
 
+% Arithmetic Operators
+
 \^ :
     {token, {'^',  TokenLine}}.
-
-[(] :
-    {token, {'(',  TokenLine}}.
-
-[)] :
-    {token, {')',  TokenLine}}.
 
 [+] :
     {token, {'+',  TokenLine}}.
@@ -115,18 +133,32 @@ div :
 [-] :
     {token, {'-',  TokenLine}}.
 
+
+% Ohter
+
+[(] :
+    {token, {'(',  TokenLine}}.
+
+[)] :
+    {token, {')',  TokenLine}}.
+
+\{ :
+    {token, {'{',  TokenLine}}.
+
+\} :
+    {token, {'}',  TokenLine}}.
+
+[,] :
+    {token, {',',  TokenLine}}.
+
 [;] :
     {token, {';',  TokenLine}}.
 
 [\n]+ :
     skip_token. % lf {end_token, {'$end', TokenLine}}.
 
-% {SEPARATOR}+ :
-%     {token, {'SEP',  TokenLine}}.
-
 [\r]+ :
     skip_token. % cr {end_token, {'$end', TokenLine}}.
-
 
 (\r\n)+ :
     skip_token.  % crlf {end_token, {'$end', TokenLine}}.
@@ -134,11 +166,35 @@ div :
 {WHITESPACE}+ :
     skip_token.
 
+% Numbers
+
 {D}+ : 
     {token,{integer,TokenLine,list_to_integer(TokenChars)}}.
 
 {D}+\.{D}+((E|e)(\+|\-)?{D}+)? : 
     {token,{float,TokenLine,list_to_float(TokenChars)}}.
+
+% Identifiers
+
+{SYMBOL} : 
+    IsConst = 'Elixir.Khorosnitsa.Mem':is_constant(TokenChars),
+    IsBuiltin = 'Elixir.Khorosnitsa.Mem':is_builtin(TokenChars),
+
+    io:format("is const ~p~n", [IsConst]),
+    io:format("is builtin ~p~n", [IsBuiltin]),
+
+    if 
+        % is constant?
+         IsConst== true -> 
+            {token, {const, TokenLine, TokenChars}};
+        % is built in func?
+         IsBuiltin== true -> 
+            {token, {builtin, TokenLine, TokenChars}};
+        % if neither constant and non built in function then indentifier
+        true -> 
+            % {token, {variable, TokenLine, TokenChars}}
+            {token, {'IDENTIFIER', TokenLine, TokenChars}}
+    end.
 
 Erlang code.
 

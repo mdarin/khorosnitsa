@@ -96,6 +96,14 @@ defmodule Khorosnitsa.Mem do
     GenServer.cast(:mem, :embed_nested)
   end
 
+  def place_function do
+    GenServer.cast(:mem, :place_function)
+  end
+
+  def call_func(function) do
+    GenServer.call(:mem, {:call, function})
+  end
+
   # Server callbacks
 
   @impl true
@@ -107,6 +115,7 @@ defmodule Khorosnitsa.Mem do
       stack: [],
       # Регистры для пользовательских переменных
       memory: %{},
+      functions: %{},
       # Константы
       consts: %{
         'PI' => 3.14159265358979323846,
@@ -127,7 +136,7 @@ defmodule Khorosnitsa.Mem do
         # "log10" => Log10, # проверка аргумента
         # проверка аргумента
         'exp' => {:math, :exp},
-        # "sqrt"  => Sqrt,  #  проверка аргумента
+        'sqrt'  => {:math, :sqrt}, #  проверка аргумента
         # "int"   => integer,
         # erlang:abs(-3)
         'abs' => {:erlang, :abs},
@@ -161,7 +170,13 @@ defmodule Khorosnitsa.Mem do
 
   def handle_call({:get, key}, _from, %{:memory => memory} = state) do
     Logger.debug("get element from memory")
-    result = Map.get(memory, key, 0)
+    result = Map.get(memory, key, :undefined)
+    {:reply, result, state}
+  end
+
+  def handle_call({:call, function}, _from, %{:functions => functions} = state) do
+    Logger.debug("call function #{function}")
+    result = Map.get(functions, function, :undefined)
     {:reply, result, state}
   end
 
@@ -253,6 +268,52 @@ defmodule Khorosnitsa.Mem do
     [head | tail] = stack
     stack = List.insert_at(head, length(head), tail)
     {:noreply, %{state | stack: stack}}
+  end
+
+  def handle_cast(
+        :place_function,
+        %{
+          :stack => stack,
+          :functions => functions
+        } = state
+      ) do
+    Logger.debug("place a function into fucntion table")
+    Logger.debug(" ==[ROUTINE]== #{inspect(stack)}")
+    position = length(stack) - 1
+    {head, [[:routine | routine]] = _tail} = Enum.split(stack, position)
+
+    # если уж перебор делать, и арность можно здесь же считать
+    code = []
+    args = []
+    arity = 0
+    function = ""
+    # состояние разбора либо декларация функции либо её тело
+    state2 = :decl
+
+    {function, arity, args, code, _state2} =
+      res =
+      Enum.reduce(routine, {function, arity, args, code, state2}, fn
+        :body, {_function, arity, args, [function] = _code, :decl = _state2} ->
+          {function, arity, args, [], :body}
+
+        :var, {function, arity, args, [var | code], :decl = state2} ->
+          {function, arity + 1, [var | args], code, state2}
+
+        x, {function, arity, args, code, state2} ->
+          {function, arity, args, [x | code], state2}
+      end)
+
+    res = %{name: function, args: args, arity: arity, code: Enum.reverse(code)}
+
+    Logger.debug(
+      " ==[ROUTINE]== res -> #{inspect(res)} is binary #{is_binary(res.name)} is list #{
+        is_list(res.name)
+      }"
+    )
+
+    functions = Map.put(functions, function, %{args: args, arity: arity, code: Enum.reverse(code)})
+    stack = head
+    {:noreply, %{state | stack: stack, functions: functions}}
   end
 
   def handle_cast(:stop, State) do

@@ -1,0 +1,47 @@
+# 1 bsr -1
+# 1 band 1
+# 2 band 1
+
+
+# Пример битовых операций
+
+# func odd? = fn
+#  int when Bitwise.band(int, 1) == 1 -> true
+#  _ -> false
+#end
+
+func is_odd(n) {
+    t = n band 1
+    if (t == 1) {
+       1 # это Истина(true)
+       n # это значение
+    } else {
+       0 # это Ложь(false)
+       n # это значение
+    }
+}
+
+#is_odd(11)
+#is_odd(12)
+
+func sub(n) {
+    a = 2; b = 0; c = 0
+    while (n > 0) {
+        a = a * a
+        t = 42
+        f = 412
+
+        func f1(bc) {
+            bc + 1
+        }
+        f1(1)
+
+        n = n bsl -1
+    }
+    a
+}
+m = 3
+m
+m = sub(2)
+m
+
