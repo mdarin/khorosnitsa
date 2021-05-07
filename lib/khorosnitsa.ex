@@ -136,11 +136,12 @@ defmodule Khorosnitsa do
     #   INSTRUCTIONS #{inspect([instruction | prog])}
     # """)
 
-    # IO.puts("#{inspect instruction}\t#{inspect ds} #{inspect scopes}")
+    # IO.puts("#{inspect instruction}\t#{inspect ds}\t#{inspect scopes}\t#{inspect depth}\t#{inspect shadow}")
+    # Logger.debug("RS #{inspect rs}")
 
     case instruction do
       :halt ->
-        IO.puts("HALT -> DS #{inspect(ds)}")
+        IO.puts("HALT -> DS #{inspect(ds)} RS #{inspect(rs)}")
 
         IO.puts("""
         ** RESULT
@@ -151,26 +152,64 @@ defmodule Khorosnitsa do
         ds
 
       :done ->
-        IO.puts("DONE -> DS #{inspect(ds)}")
+        # Logger.debug(" ===[DONE]=== DS #{inspect(ds)} RS #{inspect(rs)}")
 
         # TODO тут можно от глубины сделать, если глубина 0 то пропускать если не 0 то вызвращать управление и уменьшать глубину стека вызовов
         # TODO скорей всего надо будет оставить только команду halt, они похожи
-        IO.puts("""
-          DS dump:
-        """)
+        # IO.puts("""
+        #   DS dump:
+        # """)
 
-        for i <- ds, do: IO.inspect(i)
+        # for i <- ds, do: IO.inspect(i)
 
-        case shadow do
+        # проверить в каком состоянии находится процессор
+
+        # Состояния процессора или потока исполнения команд
+        # linear
+        # branch (if)
+        # alternative (if-else, if-elif-else)
+        # cycle (loop)
+
+        # состояние:
+        # 1.если это цикл(loop или loop_while)
+        # - условие истино
+        # - условие ложно
+        # 2.если это ветвление(branch)
+        # если это if конструкция branch_if
+        # - условие истино
+        # - условие ложно
+        # если это if-else конструкция {branch_if_else, else_code}
+        # - условие истино
+        # - условие ложно
+        {state, rest_rs} = if (length(rs) < 1) do
+            {:linear, []}
+        else
+            [st | t] = rs
+            {st, t}
+        end
+        # Logger.debug(" === [STATE] === #{inspect state}")
+
+        case state do
           {:loop, loop_code} ->
-            # если это цикл, запустить код снова из теневого регистра
-            nested_scope = %{}
-            exec(loop_code, ds, rs, shadow, [nested_scope | scopes], depth + 1)
+            # если это цикл
+            # Logger.debug(" ===[ITER]===")
+            exec(loop_code, ds, rs, shadow, scopes, depth)
+
+          {:branch_if_else, else_code} ->
+            # если это альтернатива в конструкции ветвления
+            # Logger.debug(" ===[ELSE]===")
+            exec(else_code, ds, [:branch_else | rest_rs], shadow, scopes, depth)
 
           _ ->
+            # Logger.debug(" ===[EXIT]=== #{inspect rs}")
             # иначе это конец сегмента
+
+            # при входе в сегмент формируется новая страница области видимости и новый стек данных
+            # при выходе из сегмента страница на вершине удаляется, а стек данных возвращается как результат
+
             # необходимо удалить страницу области видимости с вершины
-            {ds, back_scopes}
+            scopes = pop_nested_scope(scopes)
+            {ds, scopes}
         end
 
       :mov ->
@@ -233,11 +272,10 @@ defmodule Khorosnitsa do
         # помещаем в теневой регистр копию набора инструкций цикла
         shadow = {:loop, loop_code}
         # empty DS, empty RS, shadow hold loop code
-        nested_scope = %{}
-        {ds0, scopes0} = exec(loop_code, [], [], shadow, [nested_scope | scopes], depth + 1)
+        scopes = push_nested_scope(scopes)
+        {ds0, scopes0} = exec(loop_code, [], [shadow | rs], shadow, scopes, depth + 1)
         # IO.puts("<-' RETURN")
         ds = Enum.concat(ds0, ds)
-        # Logger.debug(" == = = = = = = = . #{inspect prog}")
         exec(prog, ds, rs, shadow, scopes0, depth)
 
       :loop_while ->
@@ -255,17 +293,20 @@ defmodule Khorosnitsa do
 
         case next_instruction do
           [:else_then | _code] = else_code ->
-            shadow = {:else, else_code}
-            nested_scope = %{}
-            {ds0, scopes0} = exec(if_code, [], rs, shadow, [nested_scope | scopes], depth + 1)
+            shadow = {:branch_if_else, else_code}
+            scopes = push_nested_scope(scopes)
+            {ds0, scopes0} = exec(if_code, [], [shadow | rs], shadow, scopes, depth + 1)
             # IO.puts("<-' RETURN")
             ds = Enum.concat(ds0, ds)
             exec(rest_prog, ds, rs, shadow, scopes0, depth)
 
           _ ->
-            shadow = []
-            nested_scope = %{}
-            {ds0, scopes0} = exec(if_code, [], rs, shadow, [nested_scope | scopes], depth + 1)
+            shadow = :branch_if
+            scopes = push_nested_scope(scopes)
+            # push(rs, :branch_if)
+            {ds0, scopes0} = exec(if_code, [], [shadow | rs], shadow, scopes, depth + 1)
+            # pop(rs, :branch_if) автоматически произойдёт потому что мы проигнорируем
+            # состояние rs после возвращения из вложенного кода
             # IO.puts("<-' RETURN")
             ds = Enum.concat(ds0, ds)
             exec(prog, ds, rs, shadow, scopes0, depth)
@@ -279,8 +320,8 @@ defmodule Khorosnitsa do
         # вызов вложеннойсти (по сути это вход в подпрограмму)
         # IO.puts("'-> ENTER")
         # emtpy DS, RS, shadow
-        nested_scope = %{}
-        {ds0, scopes0} = exec(else_code, [], [], [], [nested_scope | scopes], depth + 1)
+        scopes = push_nested_scope(scopes)
+        {ds0, scopes0} = exec(else_code, [], rs, [], scopes, depth + 1)
         # IO.puts("<-' RETURN")
         ds = Enum.concat(ds0, ds)
         exec(prog, ds, rs, shadow, scopes0, depth)
@@ -317,59 +358,94 @@ defmodule Khorosnitsa do
         # стек как результат возвращается
 
 
-        # Схема цикла
+        # Схема цикла while
         #                              +----->-------(false)----->-----+
         #                              |                              \|/
-        # [prog]--->---[loop]--->---[cond]--->---(true)--->[body]--->[done]--->---[prog]
+        # [prog]--->---[loop]--->---[cond]--->---(true)--->[body]--->[done]--->---[prog]--->
         #                /|\                                           |
         #                 +-------<------{ shadow =/= [] }------<------+
-        #                             reload loop from shadow
+        #                             reload loop code from shadow
 
         # Схема утверждения if
         #                              +----->-------(false)----->-----+
         #                              |                              \|/
-        # [prog]--->---[ if ]--->---[cond]--->---(true)--->[body]--->[done]--->---[prog]
+        # [prog]--->---[ if ]--->---[cond]--->---(true)--->[body]--->[done]--->---[prog]--->
 
 
         # Схема утверждения if-else
-        #                              +----->-------(false)----->-----+
-        #                              |                              \|/
-        # [prog]--->---[ if ]--->---[cond]--->---(true)--->[body]--->[done]--->---[prog]
+        #                              +------->-----(false)-------->------+
+        #                              |                                  \|/       load else code from shadow
+        # [prog]--->---[ if ]--->---[cond]--->---(true)--->[if body]--->[done]---(false)--->---[else body]--->---[done]--->---[prog]--->
+        #                                                                  |                                                    /|\
+        #                                                                  +----------->--------(true)------------>--------------+
 
 
+        # состояние:
+        # 1.если это цикл {loop, loop_code}
+        # - условие истино
+        # - условие ложно
+        # 2.если это ветвление(branch)
+        # если это if конструкция branch_if
+        # - условие истино
+        # - условие ложно
+        # если это if-else конструкция {branch_if_else, else_code}
+        # - условие истино
+        # - условие ложно
 
 
-        # если это цикл - теневой регистр не пуст
+        # while { push(rs, loop)
+        #   if { push(rs, if)
+        #     if { push(rs, if-else)
+        #     } else {
+        #     } pop(if-else)
+        #   } pop(rs, if)
+        # } pop(loop)
 
+        # снять с головы результать вычисления условного выражения
+        [expr | rest_ds] = ds
+        [state | _rest_rs] = rs
 
+        # TOS можно привести к булеву принудительно по стандартному правилу всё что не 0, является истиной
 
-        # если это цикл
-
-        # если это ветвление
-
-        case ds do
-          [tos | rest_ds] ->
-            case tos do
+        case state do
+          :branch_if ->
+            case expr do
               true ->
-                # продолжить выполнение программы
-                exec(prog, rest_ds, rs, shadow, scopes, depth)
-
+                # Logger.debug(" ===[IF] === true")
+                exec(prog, rest_ds, rs, [], scopes, depth) # продолжить выполнение тела(body)
               false ->
-                # если это условный оператор, то запустить альтернативную ветку
-                # иначе это цикл и его пора завершать
-                case shadow do
-                  {:else, else_code} ->
-                    exec(else_code, rest_ds, rs, [], scopes, depth)
-
-                  _ ->
-                    # {rest_ds, back_scopes}
-                    exec([:done], rest_ds, rs, [], scopes, depth)
-                end
+                # Logger.debug(" ===[IF] === false")
+                exec([:done], rest_ds, [:end_if], [], scopes, depth) # принудительно закончить выполнение и перейти в конец сегмента к инструкции done
+              #_other_then_bool -> :error
             end
 
-          _ ->
-            # {ds, scopes}
-            exec([:done], ds, rs, [], scopes, depth)
+          {:branch_if_else, _else_code} ->
+            case expr do
+              # очищаем теневой регистр в обоих случаях, чтобы сменить состояние процессора(выйти из состояния ветвление)
+              true ->
+                # Logger.debug(" ===[IF-ELSE]=== true")
+                exec(prog, rest_ds, rs, [], scopes, depth) # продолжить выполнение тела(body) if ветки
+              false ->
+                # Logger.debug(" ===[IF-ELSE]=== false")
+                exec([:done], rest_ds, rs, [], scopes, depth) # принудительно закончить выполнение и перейти в конец сегмента к инструкции done
+              #_other_then_bool -> :error
+            end
+
+          {:loop, _loop_code} ->
+            case expr do
+              # очищаем теневой регистр в случае, не выполнения условия цикла чтобы сменить состояние процессора(выйти из состояния цикл)
+              true ->
+                # Logger.debug(" === LOOP === true")
+                exec(prog, rest_ds, rs, [], scopes, depth) # продолжить выполнение тела(body) if ветки
+              false ->
+                # Logger.debug(" === LOOP === false")
+                exec([:done], rest_ds, [:end_loop], [], scopes, depth) # принудительно закончить выполнение, поставить метку окончания цикла и перейти в конец сегмента к инструкции done
+              #_other_then_bool -> :error
+            end
+
+           _ ->
+            # Logger.debug(" ===[ COND ] === state(shadow) -> #{inspect shadow}")
+            exec(prog, ds, rs, shadow, scopes, depth)
         end
 
       :lt ->
