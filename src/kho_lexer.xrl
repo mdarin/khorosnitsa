@@ -180,8 +180,8 @@ div :
     IsConst = 'Elixir.Khorosnitsa.Mem':is_constant(TokenChars),
     IsBuiltin = 'Elixir.Khorosnitsa.Mem':is_builtin(TokenChars),
 
-    io:format("is const ~p~n", [IsConst]),
-    io:format("is builtin ~p~n", [IsBuiltin]),
+    % io:format("is const ~p~n", [IsConst]),
+    % io:format("is builtin ~p~n", [IsBuiltin]),
 
     if 
         % is constant?

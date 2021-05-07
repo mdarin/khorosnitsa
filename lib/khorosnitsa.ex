@@ -65,9 +65,12 @@ defmodule Khorosnitsa do
 
     {:ok, tokens, _endline} = result
 
-    tokens
-    |> :kho_parser.parse()
-    |> IO.inspect(label: :parsed)
+    result =
+      tokens
+      |> :kho_parser.parse()
+      |> IO.inspect(label: :parsed)
+
+    {:ok, :valid_grammar} = result
 
     prog = Mem.dump()
 
@@ -75,7 +78,8 @@ defmodule Khorosnitsa do
       IO.inspect(inst, label: :inst)
     end
 
-    execute(prog)
+    result = execute(prog)
+    Logger.debug(" ===[EXEC]=== result -> #{inspect(result)}")
   end
 
   def process(:help) do
@@ -126,7 +130,7 @@ defmodule Khorosnitsa do
   end
 
   # Стековая машина Молния(ML0) или Феликс
-  defp exec([instruction | prog], ds, rs, shadow, [_front_scope | back_scopes] = scopes, depth) do
+  defp exec([instruction | prog], ds, rs, shadow, scopes, depth) do
     # IO.puts("""
     # ->PROGRAM DEPTH[#{inspect(depth)}]
     #   SCOPES #{inspect(scopes)}
@@ -181,12 +185,14 @@ defmodule Khorosnitsa do
         # если это if-else конструкция {branch_if_else, else_code}
         # - условие истино
         # - условие ложно
-        {state, rest_rs} = if (length(rs) < 1) do
+        {state, rest_rs} =
+          if length(rs) < 1 do
             {:linear, []}
-        else
+          else
             [st | t] = rs
             {st, t}
-        end
+          end
+
         # Logger.debug(" === [STATE] === #{inspect state}")
 
         case state do
@@ -305,6 +311,7 @@ defmodule Khorosnitsa do
             scopes = push_nested_scope(scopes)
             # push(rs, :branch_if)
             {ds0, scopes0} = exec(if_code, [], [shadow | rs], shadow, scopes, depth + 1)
+
             # pop(rs, :branch_if) автоматически произойдёт потому что мы проигнорируем
             # состояние rs после возвращения из вложенного кода
             # IO.puts("<-' RETURN")
@@ -357,7 +364,6 @@ defmodule Khorosnitsa do
         # При выходе из итерации страница области видимости должна быть удалена, состояние стека передано вызывающей программе,
         # стек как результат возвращается
 
-
         # Схема цикла while
         #                              +----->-------(false)----->-----+
         #                              |                              \|/
@@ -371,14 +377,12 @@ defmodule Khorosnitsa do
         #                              |                              \|/
         # [prog]--->---[ if ]--->---[cond]--->---(true)--->[body]--->[done]--->---[prog]--->
 
-
         # Схема утверждения if-else
         #                              +------->-----(false)-------->------+
         #                              |                                  \|/       load else code from shadow
         # [prog]--->---[ if ]--->---[cond]--->---(true)--->[if body]--->[done]---(false)--->---[else body]--->---[done]--->---[prog]--->
         #                                                                  |                                                    /|\
         #                                                                  +----------->--------(true)------------>--------------+
-
 
         # состояние:
         # 1.если это цикл {loop, loop_code}
@@ -391,7 +395,6 @@ defmodule Khorosnitsa do
         # если это if-else конструкция {branch_if_else, else_code}
         # - условие истино
         # - условие ложно
-
 
         # while { push(rs, loop)
         #   if { push(rs, if)
@@ -412,11 +415,14 @@ defmodule Khorosnitsa do
             case expr do
               true ->
                 # Logger.debug(" ===[IF] === true")
-                exec(prog, rest_ds, rs, [], scopes, depth) # продолжить выполнение тела(body)
+                # продолжить выполнение тела(body)
+                exec(prog, rest_ds, rs, [], scopes, depth)
+
               false ->
                 # Logger.debug(" ===[IF] === false")
-                exec([:done], rest_ds, [:end_if], [], scopes, depth) # принудительно закончить выполнение и перейти в конец сегмента к инструкции done
-              #_other_then_bool -> :error
+                # принудительно закончить выполнение и перейти в конец сегмента к инструкции done
+                exec([:done], rest_ds, [:end_if], [], scopes, depth)
+                # _other_then_bool -> :error
             end
 
           {:branch_if_else, _else_code} ->
@@ -424,11 +430,14 @@ defmodule Khorosnitsa do
               # очищаем теневой регистр в обоих случаях, чтобы сменить состояние процессора(выйти из состояния ветвление)
               true ->
                 # Logger.debug(" ===[IF-ELSE]=== true")
-                exec(prog, rest_ds, rs, [], scopes, depth) # продолжить выполнение тела(body) if ветки
+                # продолжить выполнение тела(body) if ветки
+                exec(prog, rest_ds, rs, [], scopes, depth)
+
               false ->
                 # Logger.debug(" ===[IF-ELSE]=== false")
-                exec([:done], rest_ds, rs, [], scopes, depth) # принудительно закончить выполнение и перейти в конец сегмента к инструкции done
-              #_other_then_bool -> :error
+                # принудительно закончить выполнение и перейти в конец сегмента к инструкции done
+                exec([:done], rest_ds, rs, [], scopes, depth)
+                # _other_then_bool -> :error
             end
 
           {:loop, _loop_code} ->
@@ -436,14 +445,17 @@ defmodule Khorosnitsa do
               # очищаем теневой регистр в случае, не выполнения условия цикла чтобы сменить состояние процессора(выйти из состояния цикл)
               true ->
                 # Logger.debug(" === LOOP === true")
-                exec(prog, rest_ds, rs, [], scopes, depth) # продолжить выполнение тела(body) if ветки
+                # продолжить выполнение тела(body) if ветки
+                exec(prog, rest_ds, rs, [], scopes, depth)
+
               false ->
                 # Logger.debug(" === LOOP === false")
-                exec([:done], rest_ds, [:end_loop], [], scopes, depth) # принудительно закончить выполнение, поставить метку окончания цикла и перейти в конец сегмента к инструкции done
-              #_other_then_bool -> :error
+                # принудительно закончить выполнение, поставить метку окончания цикла и перейти в конец сегмента к инструкции done
+                exec([:done], rest_ds, [:end_loop], [], scopes, depth)
+                # _other_then_bool -> :error
             end
 
-           _ ->
+          _ ->
             # Logger.debug(" ===[ COND ] === state(shadow) -> #{inspect shadow}")
             exec(prog, ds, rs, shadow, scopes, depth)
         end
@@ -637,7 +649,6 @@ defmodule Khorosnitsa do
     # если такой переменной нет ни в одной области видимости, то она создаётся в текущей странице(на вершине)
 
     {is_updated, pos, viewed_scopes} =
-      r =
       Enum.reduce_while(scopes, {false, 0, []}, fn
         scope, {_is_updated, count, acc} ->
           case Map.get(scope, variable, :undefined) do
