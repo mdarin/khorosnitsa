@@ -158,7 +158,8 @@ div :
     {token, {';',  TokenLine}}.
 
 [\n]+ :
-    skip_token. % lf {end_token, {'$end', TokenLine}}.
+    % skip_token. % lf {end_token, {'$end', TokenLine}}.
+    {token, {'LF',  TokenLine}}.
 
 [\r]+ :
     skip_token. % cr {end_token, {'$end', TokenLine}}.
@@ -188,15 +189,15 @@ div :
 
     if 
         % is constant?
-         IsConst== true -> 
-            {token, {const, TokenLine, TokenChars}};
+         IsConst == true -> 
+            {token, {const, TokenLine,list_to_binary(TokenChars)}};
         % is built in func?
-         IsBuiltin== true -> 
-            {token, {builtin, TokenLine, TokenChars}};
+         IsBuiltin == true -> 
+            {token, {builtin, TokenLine, list_to_binary(TokenChars)}};
         % if neither constant and non built in function then indentifier
         true -> 
             % {token, {variable, TokenLine, TokenChars}}
-            {token, {'IDENTIFIER', TokenLine, TokenChars}}
+            {token, {'IDENTIFIER', TokenLine, list_to_binary(TokenChars)}}
     end.
 
 Erlang code.

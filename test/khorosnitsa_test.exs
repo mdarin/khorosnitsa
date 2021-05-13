@@ -11,7 +11,7 @@ defmodule KhorosnitsaTest do
     IO.puts("This is only run once.")
     {:ok, pid} = Mem.start_link()
 
-    contex = %{
+    _contex = %{
       memory_pid: pid
     }
   end
@@ -61,7 +61,11 @@ defmodule KhorosnitsaTest do
   # группа синтаксичесий анализ
   describe "Parser" do
     test "test hello parser" do
-      parsed = get_sources() |> scan_tokens() |> parse_tokens()
+      parsed =
+        get_sources()
+        |> scan_tokens()
+        |> parse_tokens()
+
       Logger.info("parsed #{inspect(parsed)}")
 
       model = [
@@ -144,10 +148,13 @@ defmodule KhorosnitsaTest do
 
   defp parse_tokens(scanned) do
     for {{:ok, tokens, _}, source} <- scanned, into: [] do
-      result = tokens |> :kho_parser.parse()
-      # Logger.debug("tokens #{inspect tokens} source #{inspect source}")
+      result =
+        tokens
+        |> Khorosnitsa.normalize_tokens()
+        |> :kho_parser.parse()
+      # Logger.debug("tokens #{inspect result} source #{inspect source}")
       case result do
-        {:ok, :valid_grammar} -> {:ok, source}
+        {:ok, _ast} -> {:ok, source}
         _ -> {:error, source}
       end
     end
@@ -155,9 +162,12 @@ defmodule KhorosnitsaTest do
 
   defp prepare_and_execute_programs(scanned) do
     for {{:ok, tokens, _}, source} <- scanned, into: [] do
-      tokens |> :kho_parser.parse()
+      tokens
+      |> Khorosnitsa.normalize_tokens()
+      |> :kho_parser.parse()
       prog = Mem.dump()
       result = Khorosnitsa.execute(prog)
+
       {result, source}
     end
   end

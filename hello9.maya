@@ -10,8 +10,13 @@
 #d = e = g 
 # a = b = c = 1 # а вот так нельзя!
 
-func f(a, b) {
-    a + b
-}
+#func f(a, b) {
+#    a + b
+#}
+#i = 0; while (i < 2) { i = i + 1; f(i,i) }
 
-i = 0; while (i < 2) { i = i + 1; f(i,i) }
+#a = 1; a; (1 + 1)
+#b = 1
+#b
+#(2 + 3)
+#func f(a,b) { a + b}; f(10,20)

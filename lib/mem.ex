@@ -104,6 +104,10 @@ defmodule Khorosnitsa.Mem do
     GenServer.call(:mem, {:call, function})
   end
 
+  def is_function(key) do
+    GenServer.call(:mem, {:is_function, key})
+  end
+
   # Server callbacks
 
   @impl true
@@ -119,29 +123,40 @@ defmodule Khorosnitsa.Mem do
       # Константы
       consts: %{
         'PI' => 3.14159265358979323846,
+        "PI" => 3.14159265358979323846,
         'E' => 2.71828182845904523536,
+        "E" => 2.71828182845904523536,
         # постоянная Эйлера
         'GAMMA' => 0.57721566490153286060,
+        "GAMMA" => 0.57721566490153286060,
         # градусов/радиан
         'DEG' => 57.29577951308232087680,
+        "DEG" => 57.29577951308232087680,
         # золотое отношение
-        'PHI' => 1.61803398874989484820
+        'PHI' => 1.61803398874989484820,
+        "PHI" => 1.61803398874989484820
       },
       # Встроенные функции
       builtins: %{
         'sin' => {:math, :sin},
+        "sin" => {:math, :sin},
         'cos' => {:math, :cos},
+        "cos" => {:math, :cos},
         # "atan"  => :atan,
         # "log"   => Log,    # проверка аргумента
         # "log10" => Log10, # проверка аргумента
         # проверка аргумента
         'exp' => {:math, :exp},
+        "exp" => {:math, :exp},
         #  проверка аргумента
         'sqrt' => {:math, :sqrt},
+        "sqrt" => {:math, :sqrt},
         # "int"   => integer,
         # erlang:abs(-3)
         'abs' => {:erlang, :abs},
-        'pow' => {:math, :pow}
+        "abs" => {:erlang, :abs},
+        'pow' => {:math, :pow},
+        "pow" => {:math, :pow}
       }
     }
 
@@ -202,6 +217,13 @@ defmodule Khorosnitsa.Mem do
   def handle_call({:is_builtin, key}, _from, %{:builtins => builtins} = state) do
     # Logger.debug("is_builtin test for #{inspect(key)}")
     result = Map.has_key?(builtins, key)
+    {:reply, result, state}
+  end
+
+  # TODO -------
+  def handle_call({:is_function, key}, _from, %{:functions => functions} = state) do
+    # Logger.debug("is_function test for #{inspect(key)}")
+    result = Map.has_key?(functions, key)
     {:reply, result, state}
   end
 

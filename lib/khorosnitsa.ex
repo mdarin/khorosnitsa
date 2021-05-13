@@ -67,10 +67,11 @@ defmodule Khorosnitsa do
 
     result =
       tokens
+      |> normalize_tokens()
       |> :kho_parser.parse()
       |> IO.inspect(label: :parsed)
 
-    {:ok, :valid_grammar} = result
+    {:ok, _ast} = result
 
     prog = Mem.dump()
 
@@ -80,6 +81,7 @@ defmodule Khorosnitsa do
 
     result = execute(prog)
     Logger.debug(" ===[EXEC]=== result -> #{inspect(result)}")
+    result
   end
 
   def process(:help) do
@@ -95,6 +97,18 @@ defmodule Khorosnitsa do
     """)
 
     System.halt(0)
+  end
+
+  def normalize_tokens(tokens) do
+    # нужно убрать лишние переводы строки потому что лексер не может этого сделать
+    # tokens
+    {_, filtered} = Enum.reduce(tokens, {:skip, []}, fn
+      {:LF, _line}, {:skip, acc} -> {:skip, acc}
+      {:LF, _line} = token, {:keep, acc} -> {:skip, [token | acc]}
+      token, {_state, acc} -> {:keep, [token | acc]}
+    end)
+    # IO.inspect(Enum.reverse(filtered), label: :normalized)
+    Enum.reverse(filtered)
   end
 
   @doc """
