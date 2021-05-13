@@ -45,12 +45,13 @@ defmodule KhorosnitsaTest do
       Logger.info("scanned #{inspect(scanned)}")
 
       model = [
-        ok: "fibo.zalu",
-        ok: "fucn_and_branch.zalu",
-        ok: "func_and_cycle.zalu",
-        ok: "mixed_program.zalu",
-        ok: "proc_func_recursion.zalu",
-        ok: "scopes.zalu"
+        {:ok, "delims.zalu"},
+        {:ok, "fibo.zalu"},
+        {:ok, "fucn_and_branch.zalu"},
+        {:ok, "func_and_cycle.zalu"},
+        {:ok, "mixed_program.zalu"},
+        {:ok, "proc_func_recursion.zalu"},
+        {:ok, "scopes.zalu"}
       ]
 
       assert model == scanned
@@ -64,12 +65,13 @@ defmodule KhorosnitsaTest do
       Logger.info("parsed #{inspect(parsed)}")
 
       model = [
-        ok: "fibo.zalu",
-        ok: "fucn_and_branch.zalu",
-        ok: "func_and_cycle.zalu",
-        ok: "mixed_program.zalu",
-        ok: "proc_func_recursion.zalu",
-        ok: "scopes.zalu"
+        {:ok, "delims.zalu"},
+        {:ok, "fibo.zalu"},
+        {:ok, "fucn_and_branch.zalu"},
+        {:ok, "func_and_cycle.zalu"},
+        {:ok, "mixed_program.zalu"},
+        {:ok, "proc_func_recursion.zalu"},
+        {:ok, "scopes.zalu"}
       ]
 
       assert model == parsed
@@ -79,7 +81,24 @@ defmodule KhorosnitsaTest do
   # группа исполнение программы
   describe "Interpreter" do
     test "test hello interpreter" do
-      assert true == true
+      executed =
+        get_sources()
+        |> scan_tokens()
+        |> prepare_and_execute_programs()
+
+      Logger.info("executed #{inspect(executed)}")
+
+      model = [
+        {[300, 200, 100, 60, 4, 3, 2], "delims.zalu"},
+        {[89, 55, 34, 21, 13, 8, 5, 3, 2, 1, 1, 0], "fibo.zalu"},
+        {[3], "fucn_and_branch.zalu"},
+        {[4], "func_and_cycle.zalu"},
+        {[2], "mixed_program.zalu"},
+        {[40318.045405288554, 5039.686258179277, 40320, 5040], "proc_func_recursion.zalu"},
+        {[:undefined, 20, 6, 10, 1], "scopes.zalu"}
+      ]
+
+      assert model == executed
     end
   end
 
@@ -128,9 +147,18 @@ defmodule KhorosnitsaTest do
       result = tokens |> :kho_parser.parse()
       # Logger.debug("tokens #{inspect tokens} source #{inspect source}")
       case result do
-        {:ok, valid_grammar} -> {:ok, source}
+        {:ok, :valid_grammar} -> {:ok, source}
         _ -> {:error, source}
       end
+    end
+  end
+
+  defp prepare_and_execute_programs(scanned) do
+    for {{:ok, tokens, _}, source} <- scanned, into: [] do
+      tokens |> :kho_parser.parse()
+      prog = Mem.dump()
+      result = Khorosnitsa.execute(prog)
+      {result, source}
     end
   end
 end

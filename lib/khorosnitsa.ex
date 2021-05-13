@@ -142,6 +142,7 @@ defmodule Khorosnitsa do
 
     # IO.puts("#{inspect instruction}\t#{inspect ds}\t#{inspect scopes}\t#{inspect depth}\t#{inspect shadow}")
     # Logger.debug("RS #{inspect rs}")
+    # Logger.debug("SCOPES #{inspect scopes}")
 
     case instruction do
       :halt ->
@@ -222,13 +223,15 @@ defmodule Khorosnitsa do
         # следить за областью видимости
         # если это нулевой уровень, то работать с памятью(регистрами)
         # если это локальня область, то сохранить на страницу области
-        [variable, value | rest] = ds
+        # [variable, value | rest] = ds
+        [value, variable | rest] = ds
         # case depth do
         #   0 ->
         #     Mem.put(variable, value)
         #     exec(prog, rest, rs, shadow, scopes, depth)
         #   _ ->
         scopes = update_scopes(scopes, variable, value)
+        # Logger.debug(" ** scopes: #{inspect scopes} ds: #{inspect ds}")
         exec(prog, rest, rs, shadow, scopes, depth)
 
       :var ->
@@ -247,6 +250,7 @@ defmodule Khorosnitsa do
         #     value = Mem.get(variable)
         #     exec(prog, [value | rest], rs, shadow, scopes, depth)
         #   _ ->
+        # Logger.debug(" == scopes: #{inspect scopes}")
         value = lookup_scopes(scopes, variable)
         exec(prog, [value | rest], rs, shadow, scopes, depth)
 
@@ -274,13 +278,13 @@ defmodule Khorosnitsa do
 
       [:loop_while | _code] = loop_code ->
         # вызов вложеннойсти (по сути это вход в подпрограмму)
-        # IO.puts("'-> ENTER")
+        IO.puts("'-> ENTER")
         # помещаем в теневой регистр копию набора инструкций цикла
         shadow = {:loop, loop_code}
         # empty DS, empty RS, shadow hold loop code
         scopes = push_nested_scope(scopes)
         {ds0, scopes0} = exec(loop_code, [], [shadow | rs], shadow, scopes, depth + 1)
-        # IO.puts("<-' RETURN")
+        IO.puts("<-' RETURN")
         ds = Enum.concat(ds0, ds)
         exec(prog, ds, rs, shadow, scopes0, depth)
 
@@ -406,7 +410,7 @@ defmodule Khorosnitsa do
 
         # снять с головы результать вычисления условного выражения
         [expr | rest_ds] = ds
-        [state | _rest_rs] = rs
+        [state | rest_rs] = rs
 
         # TOS можно привести к булеву принудительно по стандартному правилу всё что не 0, является истиной
 
@@ -430,8 +434,8 @@ defmodule Khorosnitsa do
               # очищаем теневой регистр в обоих случаях, чтобы сменить состояние процессора(выйти из состояния ветвление)
               true ->
                 # Logger.debug(" ===[IF-ELSE]=== true")
-                # продолжить выполнение тела(body) if ветки
-                exec(prog, rest_ds, rs, [], scopes, depth)
+                # продолжить выполнение тела(body) if ветки, а также изъять альтернативу из регистра rs
+                exec(prog, rest_ds, rest_rs, [], scopes, depth)
 
               false ->
                 # Logger.debug(" ===[IF-ELSE]=== false")
@@ -442,7 +446,7 @@ defmodule Khorosnitsa do
 
           {:loop, _loop_code} ->
             case expr do
-              # очищаем теневой регистр в случае, не выполнения условия цикла чтобы сменить состояние процессора(выйти из состояния цикл)
+              # метку конца цикла в регистр rs в случае, не выполнения условия цикла чтобы сменить состояние процессора(выйти из состояния цикл)
               true ->
                 # Logger.debug(" === LOOP === true")
                 # продолжить выполнение тела(body) if ветки
@@ -456,6 +460,7 @@ defmodule Khorosnitsa do
             end
 
           _ ->
+            # это неизвестное состояние
             # Logger.debug(" ===[ COND ] === state(shadow) -> #{inspect shadow}")
             exec(prog, ds, rs, shadow, scopes, depth)
         end
@@ -577,17 +582,15 @@ defmodule Khorosnitsa do
               into: %{},
               do: {variable, value}
 
-        # emtpy DS, shadow
-        # в RS передаются значения аргументов
         # [i] To access atom keys, one may also use the map.key notation.
-        {ds0, scopes0} = exec(func_params.code, [], rs, [], [nested_scope | scopes], depth + 1)
+        scopes = push_nested_scope(scopes, nested_scope)
+        {ds0, scopes0} = exec(func_params.code, [], rs, [], scopes, depth + 1)
         # IO.puts("<-' RETURN")
         # по сути это возврат результата из подпрограммы, результат оказывается на вершине стека
         ds = Enum.concat(ds0, ds2)
 
         # возврат из подпрограммы в основной поток исполнения
-        # empty RS
-        exec(prog, ds, [], shadow, scopes0, depth)
+        exec(prog, ds, rs, shadow, scopes0, depth)
 
       # это скорей всего лиетерал(LIT или lit)
       symbol ->
@@ -606,6 +609,10 @@ defmodule Khorosnitsa do
   def push_nested_scope(scopes) do
     nested_scope = %{}
     [nested_scope | scopes]
+  end
+
+  def push_nested_scope(scopes, scope) do
+    [scope | scopes]
   end
 
   def pop_nested_scope([_nested_scope | rest_scopes] = _scopes) do

@@ -15,10 +15,10 @@ Header
 
 Nonterminals 
 list expr number unariminus negation bnegation assign 
-statement condition 
-clause clauses arguments 
+statement condition variable
+clause clauses arguments
 while_clause if_clause else_clause func_clause 
-delimiter variable func_decl end_decl %signature  %argument
+delimiter func_decl end_decl %signature  %argument
 exit done. 
 
 Terminals 
@@ -78,10 +78,19 @@ clauses -> clause delimiter clauses :
 clauses -> '$empty' :
     nil.
 
+
 clause -> expr : 
     '$1'.
 clause -> statement : 
     '$1'.
+
+
+% на уровне clause заменено
+% exprs -> expr :
+%     '$1'.
+% exprs -> expr ';' exprs:
+%     ['$1' | '$3'].
+
 
 statement -> 'PRINT' expr:
     'Elixir.Khorosnitsa.Mem':unshift(prn).
@@ -191,14 +200,8 @@ exit -> '$empty' :
     'Elixir.Khorosnitsa.Mem':place_function().
 
 
-% заменено на уровне cleause
-% exprs -> expr :
-%     '$1'.
-% exprs -> expr 'SEP' exprs:
-%     ['$1' | '$3'].
+expr -> assign : io:format("<E->ASSIGN>~n").
 
-expr -> assign : 
-    nil.
 expr -> expr '+' expr : 
     'Elixir.Khorosnitsa.Mem':unshift(add). 
 expr -> expr '*' expr : 
@@ -259,10 +262,11 @@ expr -> builtin '(' expr ')' :
 expr -> func_decl :
     'Elixir.Khorosnitsa.Mem':unshift(call). 
 %expr -> variable '=' expr : 'Elixir.Khorosnitsa.Mem':unshift({mov, '$1'}).
-% expr -> variable : 
-expr -> 'IDENTIFIER':
-    % 'Elixir.Khorosnitsa.Mem':unshift({eval, var, value_of('$1')}).
-    'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
+expr -> variable : 
+% expr -> 'IDENTIFIER':
+    io:format("<VAR>~n"),
+    % ---- старое'Elixir.Khorosnitsa.Mem':unshift({eval, var, value_of('$1')}).
+    % 'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
     'Elixir.Khorosnitsa.Mem':unshift(var),
     '$1'. % <--- это очень важно, оставлять то что требеется на вершине стека
 expr -> const : 
@@ -275,6 +279,10 @@ expr -> bnegation.
 expr -> number. 
 % expr -> statement.
 
+variable -> 'IDENTIFIER' :
+    io:format("<IDEN> ~p~n", [value_of('$1')]),
+    'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')).
+
 unariminus -> '-' expr : 
     'Elixir.Khorosnitsa.Mem':unshift(neg). % negate
 
@@ -284,13 +292,18 @@ negation -> 'NOT' expr :
 bnegation -> 'BNOT' expr : 
     'Elixir.Khorosnitsa.Mem':unshift(binv). % binary invertion
 
-% assign -> variable '=' expr : 
-assign -> 'IDENTIFIER' '=' expr : 
-    % 'Elixir.Khorosnitsa.Mem':unshift({mov, value_of('$1')}).
-    'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
+%%% TODO
+%% d = e = g 
+%% a = b = c = 1 # а вот так нельзя!
+% assign -> 'IDENTIFIER' '=' expr : 
+assign -> variable '=' expr : 
+    io:format("<ASSIGN> ~p~n", ['$3']),
+    % ----- старое 'Elixir.Khorosnitsa.Mem':unshift({mov, value_of('$1')}).
+    % 'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
     'Elixir.Khorosnitsa.Mem':unshift(mov).
 
 number -> integer : 
+    io:format("<NUM> ~p~n", ['$1']),
     'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')), 
     '$1'.
 number -> float : 

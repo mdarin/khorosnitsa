@@ -1,5 +1,8 @@
 Definitions.
 
+% docker run -it -v $(pwd):/app -w /app elixir bash
+% docker exec -it b78e63f57a8f bash
+
 % ручной вызов "PI" |> String.to_charlist |> :cli_lexer.string
 
 % вызов модулей эликсира из эрланга можно делать так 'Elixr.<module>:<fucntion>(Args)
