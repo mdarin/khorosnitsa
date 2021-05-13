@@ -49,15 +49,19 @@ func fibo(n) {
 # 12	89
 # 100   218922995834555169026
 # 145   555565404224292694404015791808
- fibo(1)
- fibo(2)
- fibo(3)
- fibo(4)
- fibo(5)
- fibo(6)
- fibo(7)
- fibo(8)
- fibo(9)
- fibo(10)
- fibo(11)
- fibo(12)
+
+n = 1; while (n < 13) { fibo(n); n = n + 1 }
+
+# ручной тест образец
+# fibo(1)
+# fibo(2)
+# fibo(3)
+# fibo(4)
+# fibo(5)
+# fibo(6)
+# fibo(7)
+# fibo(8)
+# fibo(9)
+# fibo(10)
+# fibo(11)
+# fibo(12)

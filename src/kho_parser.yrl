@@ -200,7 +200,9 @@ exit -> '$empty' :
     'Elixir.Khorosnitsa.Mem':place_function().
 
 
-expr -> assign : io:format("<E->ASSIGN>~n").
+expr -> assign :
+    %io:format("<E->ASSIGN>~n").
+    '$1'.
 
 expr -> expr '+' expr : 
     'Elixir.Khorosnitsa.Mem':unshift(add). 
@@ -264,7 +266,7 @@ expr -> func_decl :
 %expr -> variable '=' expr : 'Elixir.Khorosnitsa.Mem':unshift({mov, '$1'}).
 expr -> variable : 
 % expr -> 'IDENTIFIER':
-    io:format("<VAR>~n"),
+    % io:format("<VAR>~n"),
     % ---- старое'Elixir.Khorosnitsa.Mem':unshift({eval, var, value_of('$1')}).
     % 'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
     'Elixir.Khorosnitsa.Mem':unshift(var),
@@ -280,7 +282,7 @@ expr -> number.
 % expr -> statement.
 
 variable -> 'IDENTIFIER' :
-    io:format("<IDEN> ~p~n", [value_of('$1')]),
+    % io:format("<IDEN> ~p~n", [value_of('$1')]),
     'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')).
 
 unariminus -> '-' expr : 
@@ -297,13 +299,13 @@ bnegation -> 'BNOT' expr :
 %% a = b = c = 1 # а вот так нельзя!
 % assign -> 'IDENTIFIER' '=' expr : 
 assign -> variable '=' expr : 
-    io:format("<ASSIGN> ~p~n", ['$3']),
+    % io:format("<ASSIGN> ~p~n", ['$3']),
     % ----- старое 'Elixir.Khorosnitsa.Mem':unshift({mov, value_of('$1')}).
     % 'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
     'Elixir.Khorosnitsa.Mem':unshift(mov).
 
 number -> integer : 
-    io:format("<NUM> ~p~n", ['$1']),
+    % io:format("<NUM> ~p~n", ['$1']),
     'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')), 
     '$1'.
 number -> float : 

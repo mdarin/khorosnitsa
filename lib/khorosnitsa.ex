@@ -278,18 +278,19 @@ defmodule Khorosnitsa do
 
       [:loop_while | _code] = loop_code ->
         # вызов вложеннойсти (по сути это вход в подпрограмму)
-        IO.puts("'-> ENTER")
+        # IO.puts("'-> ENTER LOOP")
         # помещаем в теневой регистр копию набора инструкций цикла
         shadow = {:loop, loop_code}
         # empty DS, empty RS, shadow hold loop code
         scopes = push_nested_scope(scopes)
         {ds0, scopes0} = exec(loop_code, [], [shadow | rs], shadow, scopes, depth + 1)
-        IO.puts("<-' RETURN")
+        # IO.puts("<-' RETURN LOOP")
         ds = Enum.concat(ds0, ds)
         exec(prog, ds, rs, shadow, scopes0, depth)
 
       :loop_while ->
         # *NOP* skipped
+        # Logger.debug(" EXEC LOOP")
         exec(prog, ds, rs, shadow, scopes, depth)
 
       [:if_then | _code] = if_code ->
@@ -325,6 +326,7 @@ defmodule Khorosnitsa do
 
       :if_then ->
         # *NOP* skipped
+        # Logger.debug(" EXEC IF BRANCH")
         exec(prog, ds, rs, shadow, scopes, depth)
 
       [:else_then | _code] = else_code ->
@@ -339,6 +341,7 @@ defmodule Khorosnitsa do
 
       :else_then ->
         # *NOP* skipped
+        # Logger.debug(" EXEC ELSE BRANCH")
         exec(prog, ds, rs, shadow, scopes, depth)
 
       :cond_expr ->
@@ -570,7 +573,7 @@ defmodule Khorosnitsa do
         # получить код функции по ссылке
         func_params = Mem.call_func(function)
         # вызов подпрограммы
-        # IO.puts("'-> ENTER")
+        # IO.puts("'-> ENTER CALL func: #{inspect func_params.code}  prog: #{inspect prog}")
         {args, ds2} = Enum.split(ds1, func_params.arity)
         # Несоответсвие параметров это фатальная ошибка
         true = length(args) == func_params.arity
@@ -584,8 +587,8 @@ defmodule Khorosnitsa do
 
         # [i] To access atom keys, one may also use the map.key notation.
         scopes = push_nested_scope(scopes, nested_scope)
-        {ds0, scopes0} = exec(func_params.code, [], rs, [], scopes, depth + 1)
-        # IO.puts("<-' RETURN")
+        {ds0, scopes0} = exec(func_params.code, [], [:call | rs], [], scopes, depth + 1)
+        #IO.puts("<-' RETURN CALL")
         # по сути это возврат результата из подпрограммы, результат оказывается на вершине стека
         ds = Enum.concat(ds0, ds2)
 
