@@ -5,7 +5,7 @@ defmodule KhorosnitsaTest do
   require Logger
   require File
 
-  alias Khorosnitsa.Mem
+  alias Khorosnitsa.{Mem, StackComputer}
 
   setup_all do
     IO.puts("This is only run once.")
@@ -166,7 +166,7 @@ defmodule KhorosnitsaTest do
       |> Khorosnitsa.normalize_tokens()
       |> :kho_parser.parse()
       prog = Mem.dump()
-      result = Khorosnitsa.execute(prog)
+      result = StackComputer.execute(prog)
 
       {result, source}
     end

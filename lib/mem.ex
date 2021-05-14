@@ -72,8 +72,8 @@ defmodule Khorosnitsa.Mem do
     GenServer.call(:mem, {:unshift, element})
   end
 
-  def store(position, element) do
-    GenServer.call(:mem, {:store, position, element})
+  def insert(position, element) do
+    GenServer.cast(:mem, {:insert, position, element})
   end
 
   def dump do
@@ -106,6 +106,10 @@ defmodule Khorosnitsa.Mem do
 
   def is_function(key) do
     GenServer.call(:mem, {:is_function, key})
+  end
+
+  def get_functions do
+    GenServer.call(:mem, :get_functions)
   end
 
   # Server callbacks
@@ -220,11 +224,15 @@ defmodule Khorosnitsa.Mem do
     {:reply, result, state}
   end
 
-  # TODO -------
   def handle_call({:is_function, key}, _from, %{:functions => functions} = state) do
     # Logger.debug("is_function test for #{inspect(key)}")
     result = Map.has_key?(functions, key)
     {:reply, result, state}
+  end
+
+  def handle_call(:get_functions, _from, %{:functions => functions} = state) do
+    # Logger.debug("get functions table")
+    {:reply, functions, state}
   end
 
   # def handle_call({:push, element}, _from, %{:stack => stack} = state) do
@@ -237,13 +245,6 @@ defmodule Khorosnitsa.Mem do
     # Logger.debug("unshift element into stack")
     position = length(stack)
     stack = List.insert_at(stack, position, element)
-    {:reply, position + 1, %{state | stack: stack}}
-  end
-
-  def handle_call({:store, position, element}, _from, %{:stack => stack} = state) do
-    # Logger.debug("store element in stack on exact position")
-    {left, right} = Enum.split(stack, position)
-    stack = Enum.concat(left, [element | right])
     {:reply, position + 1, %{state | stack: stack}}
   end
 
@@ -279,6 +280,13 @@ defmodule Khorosnitsa.Mem do
   #   stack = List.insert_at(stack, length(stack), element)
   #   {:noreply, %{state | stack: stack}}
   # end
+
+  def handle_cast({:insert, position, element}, %{:stack => stack} = state) do
+    # Logger.debug("insert element in stack on exact position")
+    {left, right} = Enum.split(stack, position)
+    stack = Enum.concat(left, [element | right])
+    {:noreply, %{state | stack: stack}}
+  end
 
   def handle_cast(:nested, %{:stack => stack} = state) do
     # Logger.debug("nested stack")
