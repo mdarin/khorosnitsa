@@ -274,7 +274,7 @@ expr -> builtin '(' expr ')' : % 'BIF' или bif
     % 'Elixir.Khorosnitsa.Mem':unshift({eval, bltin, value_of('$1')}).
     'Elixir.Khorosnitsa.Mem':unshift(value_of('$1')),
     'Elixir.Khorosnitsa.Mem':unshift(bif),
-    {'$1', <<"(">>, '$3', <<")">>}. 
+    {value_of('$1'), <<"(">>, '$3', <<")">>}. 
 
 expr -> func_decl :
     'Elixir.Khorosnitsa.Mem':unshift(call),
