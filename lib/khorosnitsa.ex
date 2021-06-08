@@ -6,6 +6,7 @@ defmodule Khorosnitsa do
 
   require Logger
   require File
+  require Regex
 
   alias Khorosnitsa.{Mem, StackComputer, Formater}
 
@@ -31,20 +32,29 @@ defmodule Khorosnitsa do
 
     args
     |> parse_args
+    |> IO.inspect(label: :parsed_args)
     |> process
   end
 
   def parse_args(args) do
-    options = OptionParser.parse(args, switches: [key: :string])
+    options =
+      OptionParser.parse(args, switches: [key: :string])
+      |> IO.inspect(label: :options)
 
     case options do
       {[source: source], _, _} -> [source: source]
       {[name: name], _, _} -> [name: name]
       {[help: true], _, _} -> :help
-      _ -> :help
+      _ -> :repl
     end
   end
 
+  @doc """
+  # Командный интерфейс интерпретатора Ragdon для языка Zalupashka
+
+  По умолчанию
+  :repl - Работать в режиме диалога или так называемого цикла чтения-вычисления-печати (англ. read-eval-print loop, REPL)
+  """
   def process(name: name) do
     IO.puts("Hello, #{name}! You're awesome!!")
   end
@@ -64,6 +74,7 @@ defmodule Khorosnitsa do
       |> :kho_lexer.string()
       |> IO.inspect(label: :tokenized)
 
+    # здесь можно сделать обработку ошибок
     {:ok, tokens, _endline} = result
 
     # произвести синтаксический анализ
@@ -85,12 +96,11 @@ defmodule Khorosnitsa do
     prog = Mem.dump()
 
     # генерация ассемблера для интерпретатора
+    # ==== начало генерации ассемблера
     intermediate_code =
       prog
       |> List.flatten()
       |> IO.inspect(label: :flattened)
-      # |> Enum.join("\n")
-      # |> IO.inspect(label: :joined)
 
     # ----- обход таблицы функций
     func_list =
@@ -117,6 +127,7 @@ defmodule Khorosnitsa do
 
     # out intermediate code into a file
     File.write("./intermediate_code", intermediate_code, [:write, :binary])
+    # === конец генерации ассемблера
 
 
     # вывести на экран программу в виде инструкции
@@ -127,6 +138,7 @@ defmodule Khorosnitsa do
     # запустить программу на выполнение
     result = StackComputer.execute(prog)
 
+    # обработать результат
     Logger.debug(" ===[EXEC]=== result -> #{inspect(result)}")
     result
   end
@@ -146,6 +158,13 @@ defmodule Khorosnitsa do
     System.halt(0)
   end
 
+  def process(:repl) do
+    # lineno = 1
+    buffer = []
+    prompt = "|> "
+    cli_loop(prompt, buffer)
+  end
+
   @doc """
     Нужно убрать лишние переводы строки потому что лексер не может этого сделать
   """
@@ -159,4 +178,75 @@ defmodule Khorosnitsa do
     Enum.reverse(filtered)
   end
 
+  @doc """
+  Простая стековая машина реагирующая на открывающиеся и закрывающиеся скобки, кавычки и пр
+  """
+  def cli_loop(prompt, buffer) do
+    line = IO.gets(prompt)
+
+    buffer = List.insert_at(buffer, -1, line)
+
+    {:ok, tokens, _endline} =
+      List.to_string(buffer)
+      |> IO.inspect(label: :buffer)
+      |> String.to_charlist()
+      |> :cli_lexer.string()
+      |> IO.inspect(label: :tokenized)
+
+    result =
+      tokens
+      |> :cli_parser.parse()
+      |> IO.inspect(label: :parsed)
+
+    case result do
+      {:ok, :completed} ->
+        # prepare expr
+
+        buffer = buffer |> List.to_string()
+        expr = Regex.replace(~r/[\n]+/, buffer, "") <> "\n"
+        IO.inspect(expr, label: :expr)
+
+        # evaluate expr
+        #  произвести лексический анализ
+        result =
+          expr
+          |> String.to_charlist()
+          |> :kho_lexer.string()
+          |> IO.inspect(label: :tokenized)
+
+        # здесь можно сделать обработку ошибок
+        {:ok, tokens, _endline} = result
+
+        # произвести синтаксический анализ
+        result =
+          tokens
+          |> normalize_tokens()
+          |> :kho_parser.parse()
+          |> IO.inspect(label: :parsed)
+
+        # получить дерево разбора после синтаксического анализа
+        {:ok, _ast} = result
+
+        # получить дамп программы из памяти(память обнулится)
+        prog = Mem.dump()
+
+        # запустить программу на выполнение
+        StackComputer.execute(prog)
+
+        # reset buffer and restart loop
+        cli_loop("|> ", [])
+
+      {:ok, :continue} ->
+        # accumulate buffer
+        cli_loop("|>> ", buffer)
+
+      _ ->
+        Logger.error("Malformed string: #{inspect(line)} buffer: #{inspect(buffer)}")
+        cli_loop(prompt, [])
+
+    end
+  end
 end
+
+
+

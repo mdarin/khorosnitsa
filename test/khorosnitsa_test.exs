@@ -7,6 +7,28 @@ defmodule KhorosnitsaTest do
 
   alias Khorosnitsa.{Mem, StackComputer}
 
+  @model_1 [
+        {:ok, "01_delims.zalu"},
+        {:ok, "02_fibo.zalu"},
+        {:ok, "03_fucn_and_branch.zalu"},
+        {:ok, "04_func_and_cycle.zalu"},
+        {:ok, "05_mixed_program.zalu"},
+        {:ok, "06_proc_func_recursion.zalu"},
+        {:ok, "07_scopes.zalu"}
+      ]
+
+  @model_2 [
+        {[300, 200, 100, 60, 4, 3, 2], "01_delims.zalu"},
+        {[89, 55, 34, 21, 13, 8, 5, 3, 2, 1, 1, 0], "02_fibo.zalu"},
+        {[3], "03_fucn_and_branch.zalu"},
+        {[4], "04_func_and_cycle.zalu"},
+        {[2], "05_mixed_program.zalu"},
+        {[40318.045405288554, 5039.686258179277, 40320, 5040], "06_proc_func_recursion.zalu"},
+        {[:undefined, 20, 6, 10, 1], "07_scopes.zalu"}
+      ]
+
+
+
   setup_all do
     IO.puts("This is only run once.")
     {:ok, pid} = Mem.start_link()
@@ -44,16 +66,7 @@ defmodule KhorosnitsaTest do
       scanned = get_sources() |> scan_sources_by_lexer()
       Logger.info("scanned #{inspect(scanned)}")
 
-      model = [
-        {:ok, "delims.zalu"},
-        {:ok, "fibo.zalu"},
-        {:ok, "fucn_and_branch.zalu"},
-        {:ok, "func_and_cycle.zalu"},
-        {:ok, "mixed_program.zalu"},
-        {:ok, "proc_func_recursion.zalu"},
-        {:ok, "scopes.zalu"}
-      ]
-
+      model = @model_1
       assert model == scanned
     end
   end
@@ -68,16 +81,7 @@ defmodule KhorosnitsaTest do
 
       Logger.info("parsed #{inspect(parsed)}")
 
-      model = [
-        {:ok, "delims.zalu"},
-        {:ok, "fibo.zalu"},
-        {:ok, "fucn_and_branch.zalu"},
-        {:ok, "func_and_cycle.zalu"},
-        {:ok, "mixed_program.zalu"},
-        {:ok, "proc_func_recursion.zalu"},
-        {:ok, "scopes.zalu"}
-      ]
-
+      model = @model_1
       assert model == parsed
     end
   end
@@ -92,16 +96,7 @@ defmodule KhorosnitsaTest do
 
       Logger.info("executed #{inspect(executed)}")
 
-      model = [
-        {[300, 200, 100, 60, 4, 3, 2], "delims.zalu"},
-        {[89, 55, 34, 21, 13, 8, 5, 3, 2, 1, 1, 0], "fibo.zalu"},
-        {[3], "fucn_and_branch.zalu"},
-        {[4], "func_and_cycle.zalu"},
-        {[2], "mixed_program.zalu"},
-        {[40318.045405288554, 5039.686258179277, 40320, 5040], "proc_func_recursion.zalu"},
-        {[:undefined, 20, 6, 10, 1], "scopes.zalu"}
-      ]
-
+      model = @model_2
       assert model == executed
     end
   end
@@ -114,6 +109,7 @@ defmodule KhorosnitsaTest do
   defp get_sources() do
     "./test"
     |> File.ls!()
+    |> Enum.sort()
     |> Enum.filter(fn file -> file =~ ~r/[.]zalu/ end)
   end
 
