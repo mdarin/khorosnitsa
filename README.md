@@ -1,8 +1,40 @@
 # Khorosnitsa
 
-**TODO: Add description**
+Хоросница - это интерпретатор языка Залупашка, выполненный на основе магазинного автомата.
+
+Zalupashka – это простой программируемый интерпретатор для выражений с плавающей точкой.
+ 
+凸(￣ヘ￣)
+
 
 ## Installation
+```bash
+clone the project
+cd path/to/clonned/dir
+mix escript.build
+mix test
+```
+
+REPL mode
+```bash
+./khorosnitsa
+|> 1 + 1
+```
+и вы должны увидать 2 как результат вычисления выражения
+
+Также можно передать файл с программой на выполнение
+```bash
+./khorosnitsa --source ./test/01_delims.zalu
+```
+И посмотреть результат работы
+
+Программы на яызыке Залупашка имеют расширение `zalu`. Это конвенция, но не требование
+
+Файлы test/*.zalu содержат примеры программ и заодно являются образцами для тестов
+
+Это наброски собраные в рабочий проект, коорый можно покрутить поизучать.
+Не является законченным продуктом.
+
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `khorosnitsa` to your list of dependencies in `mix.exs`:
