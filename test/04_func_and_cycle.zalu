@@ -1,0 +1,20 @@
+#
+# while тестирование 
+#
+func f(a) {
+    a = 0
+    while (a < 1) {
+        a = a + 1
+        while (a < 2) {
+            a = a + 1
+        }
+        while (a < 3) {
+            a = a * 2
+        }
+    }
+    a
+}
+
+n = 0
+n = f(n)
+n

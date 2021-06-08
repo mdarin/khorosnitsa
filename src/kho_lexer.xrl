@@ -1,5 +1,8 @@
 Definitions.
 
+% docker run -it -v $(pwd):/app -w /app elixir bash
+% docker exec -it b78e63f57a8f bash
+
 % ручной вызов "PI" |> String.to_charlist |> :cli_lexer.string
 
 % вызов модулей эликсира из эрланга можно делать так 'Elixr.<module>:<fucntion>(Args)
@@ -155,7 +158,8 @@ div :
     {token, {';',  TokenLine}}.
 
 [\n]+ :
-    skip_token. % lf {end_token, {'$end', TokenLine}}.
+    % skip_token. % lf {end_token, {'$end', TokenLine}}.
+    {token, {'LF',  TokenLine}}.
 
 [\r]+ :
     skip_token. % cr {end_token, {'$end', TokenLine}}.
@@ -180,20 +184,20 @@ div :
     IsConst = 'Elixir.Khorosnitsa.Mem':is_constant(TokenChars),
     IsBuiltin = 'Elixir.Khorosnitsa.Mem':is_builtin(TokenChars),
 
-    io:format("is const ~p~n", [IsConst]),
-    io:format("is builtin ~p~n", [IsBuiltin]),
+    % io:format("is const ~p~n", [IsConst]),
+    % io:format("is builtin ~p~n", [IsBuiltin]),
 
     if 
         % is constant?
-         IsConst== true -> 
-            {token, {const, TokenLine, TokenChars}};
+         IsConst == true -> 
+            {token, {const, TokenLine,list_to_binary(TokenChars)}};
         % is built in func?
-         IsBuiltin== true -> 
-            {token, {builtin, TokenLine, TokenChars}};
+         IsBuiltin == true -> 
+            {token, {builtin, TokenLine, list_to_binary(TokenChars)}};
         % if neither constant and non built in function then indentifier
         true -> 
             % {token, {variable, TokenLine, TokenChars}}
-            {token, {'IDENTIFIER', TokenLine, TokenChars}}
+            {token, {'IDENTIFIER', TokenLine, list_to_binary(TokenChars)}}
     end.
 
 Erlang code.

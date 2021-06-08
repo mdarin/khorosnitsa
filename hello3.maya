@@ -4,7 +4,6 @@
 # 
 # 凸(￣ヘ￣)
 #
-# ./khorosnitsa --source hello3.maya
 
 
 #
@@ -18,7 +17,7 @@
 #2
 #3
 
-0 > 10
+#0 > 10
 
 #print 42 
 
@@ -52,3 +51,29 @@
 
 # это смотреть 
 #3 + 4 * 2 / (1 - 5)^2
+
+a = 2
+b = 3
+
+func myfu(c, d) {
+    c + d
+}
+
+func alpha(n) {
+    n
+}
+func betta(m, k) {
+    m * k
+}
+func gamma() {
+    42
+}
+func zeta(a, b, c) {
+    a + b - c
+}
+
+alpha(12)
+betta(42,24)
+gamma()
+zeta(1,2,3)
+myfu(a, b)
