@@ -32,6 +32,16 @@ REPL mode
 ./khorosnitsa --source ./test/01_delims.zalu
 ```
 
+Запуск приложения в контейнере
+
+```sh
+clone the project
+cd path/to/clonned/dir
+docker run --rm  -it -v $PWD:/app -w /app elixir:alpine ash
+root@container# mix escript.build
+root@container# mix test
+```
+
 И посмотреть результат работы
 
 Программы на яызыке Залупашка имеют расширение `zalu`. Это конвенция, но не требование
